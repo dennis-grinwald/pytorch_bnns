@@ -21,7 +21,7 @@ import numpy as np
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def pixel_image(shape, sd=None):
-    
+
     torch.manual_seed(0)
     np.random.seed(0)
 
@@ -44,6 +44,10 @@ def rfft2d_freqs(h, w):
 
 
 def fft_image(shape, sd=None, decay_power=1):
+
+    torch.manual_seed(0)
+    np.random.seed(0)
+
     batch, channels, h, w = shape
     freqs = rfft2d_freqs(h, w)
     init_val_size = (batch, channels) + freqs.shape + (2,) # 2 for imaginary and real components
