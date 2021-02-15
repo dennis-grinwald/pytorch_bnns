@@ -1,1 +1,1 @@
-from lucent.modelzoo.inceptionv1.InceptionV1 import *
+from bayesian_activation_maximisation.lucent.modelzoo.inceptionv1.InceptionV1 import *

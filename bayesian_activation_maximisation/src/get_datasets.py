@@ -16,7 +16,7 @@ def load_cifar10_big_augmented(batch_size=50):
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-    trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
+    trainset = torchvision.datasets.CIFAR10(root='../../data', train=True,
                                         transform=train_transform,
                                         download=True)
 
@@ -24,7 +24,7 @@ def load_cifar10_big_augmented(batch_size=50):
                     trainset, batch_size=batch_size, num_workers=4, pin_memory=True,
                     shuffle=True) 
 
-    testset = torchvision.datasets.CIFAR10(root='./data', train=False,
+    testset = torchvision.datasets.CIFAR10(root='../../data', train=False,
                                        download=True, transform=val_test_transform)
 
     testloader = torch.utils.data.DataLoader(
@@ -48,7 +48,7 @@ def load_cifar10_small_standard(batch_size=50):
         [   transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-    trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
+    trainset = torchvision.datasets.CIFAR10(root='../../data', train=True,
                                         transform=train_transform,
                                         download=True)
 
@@ -56,7 +56,7 @@ def load_cifar10_small_standard(batch_size=50):
                     trainset, batch_size=batch_size, num_workers=4, pin_memory=True,
                     shuffle=True) 
 
-    testset = torchvision.datasets.CIFAR10(root='./data', train=False,
+    testset = torchvision.datasets.CIFAR10(root='../../data', train=False,
                                        download=True, transform=val_test_transform)
 
     testloader = torch.utils.data.DataLoader(
@@ -84,7 +84,7 @@ def load_cifar10_small_augmented(batch_size=50):
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     ])
 
-    trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
+    trainset = torchvision.datasets.CIFAR10(root='../../data', train=True,
                     transform=train_transform,
                     download=True)
 
@@ -92,7 +92,7 @@ def load_cifar10_small_augmented(batch_size=50):
                     trainset, batch_size=batch_size, num_workers=4, pin_memory=True,
                     shuffle=True) 
 
-    testset = torchvision.datasets.CIFAR10(root='./data', train=False,
+    testset = torchvision.datasets.CIFAR10(root='../../data', train=False,
                     download=True, transform=test_transform)
 
     testloader = torch.utils.data.DataLoader(

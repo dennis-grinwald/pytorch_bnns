@@ -10,8 +10,8 @@ import torch
 from torch import cuda, device
 import torch.nn.functional as F
 
-from src.get_datasets import *
-from src.bayesian_models.mcd_utils import *
+from bayesian_activation_maximisation.src.get_datasets import *
+from bayesian_activation_maximisation.src.bayesian_models.mcd_utils import *
 
 def y_pred_distribution(seeds, model, dataloader):
 

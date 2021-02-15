@@ -17,8 +17,8 @@
 
 from __future__ import absolute_import, division, print_function
 
-from lucent.optvis.param.spatial import pixel_image, fft_image
-from lucent.optvis.param.color import to_valid_rgb
+from bayesian_activation_maximisation.lucent.optvis.param.spatial import pixel_image, fft_image
+from bayesian_activation_maximisation.lucent.optvis.param.color import to_valid_rgb
 
 
 def image(w, h=None, sd=None, batch=None, decorrelate=True,

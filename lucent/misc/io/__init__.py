@@ -15,4 +15,4 @@
 # limitations under the License.
 # ==============================================================================
 
-from lucent.misc.io.showing import show
+from bayesian_activation_maximisation.lucent.misc.io.showing import show

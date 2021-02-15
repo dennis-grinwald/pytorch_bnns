@@ -6,10 +6,10 @@ import json
 import numpy as np
 from tqdm import tqdm
 from torch import nn, optim, device, cuda
-
-from src.get_datasets import *
-from src.bayesian_models.MCD_CNNs import * 
-from src.train_eval_fn import *
+    
+from bayesian_activation_maximisation.src.get_datasets import *
+from bayesian_activation_maximisation.src.bayesian_models.MCD_CNNs import * 
+from bayesian_activation_maximisation.src.train_eval_fn import *
 
 # SETUP #
 
@@ -77,5 +77,5 @@ for p in xp_conf['ps']:
 
 # SAVE RESULTS #
 
-xp_save_path = xp_conf['path'] + '/results/' + f'xp_{xp_conf["training"]}_' + f'xp_{xp_conf["model"]}_' + '_'.join('_'.join(time.ctime().split(' ')).split(':'))
+xp_save_path = xp_conf['path'] + '/results/' + f'xp_{xp_conf["model"]}_' + f'xp_{xp_conf["model"]}_' + '_'.join('_'.join(time.ctime().split(' ')).split(':'))
 np.save(xp_save_path, xp_conf)
