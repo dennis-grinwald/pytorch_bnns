@@ -1,6 +1,6 @@
 from torch import nn
 import torch.nn.functional as F
-from src.bayesian_models.mcd_utils import DropoutConv2d, DropoutLinear
+from bayesian_activation_maximisation.src.bayesian_models.mcd_utils import DropoutConv2d, DropoutLinear
 
 class MCD_CNN_8L_224_3C(nn.Module):
     def __init__(self, p=0.5):
