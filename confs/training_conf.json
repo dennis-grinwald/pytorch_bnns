@@ -1,0 +1,16 @@
+{
+    "mcd_training_conf": 
+    {   
+        "xp_name": "training",
+        "path": "/home/dgrinwald/projects/bayes_act_max/experiments/mcdo/",
+        "model": "MCD_CNN_8L_224_3C",
+        "ds": "cifar10_big_augmented",
+        "batch_size": 50,
+        "epochs": 50,
+        "lr_scheduler": "StepLR",
+        "gamma": 0.1,
+        "lrs": [0.001],
+        "ps": [0.0, 0.125, 0.25, 0.5],
+        "wds": [0.0]
+    }
+}   

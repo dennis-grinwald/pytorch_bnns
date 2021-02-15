@@ -1,0 +1,10 @@
+{   
+    "xp_name": "compute_predictive_entropies",
+    "np_seed": 42,
+    "num_samples": 100, 
+    "batch_size": 50,
+    "base_path_models": "./experiments/mcdo/models/",
+    "model_name": "MCD_CNN_7L_Cifar10_small_p_0.25_lr_0.001.pt_wd_0.0.pt",
+    "base_path_points": "./experiments/mcdo/high_entropy_points/",
+    "ds": "cifar10_small_augmented"
+}
