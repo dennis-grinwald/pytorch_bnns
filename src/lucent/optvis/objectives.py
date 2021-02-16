@@ -19,7 +19,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from decorator import decorator
-from bayesian_activation_maximisation.lucent.optvis.objectives_util import _make_arg_str, _extract_act_pos, _T_handle_batch
+from .src.lucent.optvis.objectives_util import _make_arg_str, _extract_act_pos, _T_handle_batch
 
 
 class Objective():

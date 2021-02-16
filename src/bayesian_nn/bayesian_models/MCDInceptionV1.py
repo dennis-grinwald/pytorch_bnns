@@ -32,8 +32,8 @@ from __future__ import absolute_import, division, print_function
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from bayesian_activation_maximisation.src.bayesian_models import inceptionv1_helper_layers
-from bayesian_activation_maximisation.src.bayesian_models.mcd_utils import *
+from .src.bayesian_nn.bayesian_models import inceptionv1_helper_layers
+from .src.bayesian_nn.bayesian_models.mcd_utils import *
 
 
 model_urls = {

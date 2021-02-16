@@ -22,8 +22,8 @@ from tqdm import tqdm
 from PIL import Image
 import torch
 
-from bayesian_activation_maximisation.lucent.optvis import objectives, transform, param
-from bayesian_activation_maximisation.lucent.misc.io import show
+from .src.lucent.optvis import objectives, transform, param
+from .src.lucent.misc.io import show
 
 
 def render_vis(
