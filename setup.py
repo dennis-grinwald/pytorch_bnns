@@ -1,15 +1,12 @@
-import lucent
 from setuptools import setup, find_packages
-
-version = lucent.__version__
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name="BAM",
-    packages=find_packages(exclude=[]),
-    version=version,
+    name="bayesian-actmax",
+    packages=find_packages(exclude=["tests", "*.tests", "*.tests.*", "tests.*"]),
+    version="0.0.1",
     description=(
         "Uncertainty in activation maximisation"
     ),

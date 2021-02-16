@@ -25,8 +25,8 @@ from string import Template
 import numpy as np
 import IPython.display
 
-from bayesian_activation_maximisation.lucent.misc.io.serialize_array import serialize_array, array_to_jsbuffer
-from bayesian_activation_maximisation.lucent.misc.io.collapse_channels import collapse_channels
+from .serialize_array import serialize_array, array_to_jsbuffer
+from .collapse_channels import collapse_channels
 
 
 # create logger with module name, e.g. lucid.misc.io.showing

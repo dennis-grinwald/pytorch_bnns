@@ -21,7 +21,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from bayesian_activation_maximisation.lucent.optvis.param.resize_bilinear_nd import resize_bilinear_nd
+from .resize_bilinear_nd import resize_bilinear_nd
 
 
 def lowres_tensor(shape, underlying_shape, offset=None, sd=0.01):

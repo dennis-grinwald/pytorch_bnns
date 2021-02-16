@@ -32,7 +32,7 @@ from __future__ import absolute_import, division, print_function
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from bayesian_activation_maximisation.lucent.modelzoo.inceptionv1 import helper_layers
+import .helper_layers
 
 
 model_urls = {
