@@ -23,7 +23,7 @@ from PIL import Image
 import torch
 
 from . import objectives, transform, param
-from ..misc.io import show
+from ..misc.io.showing import show
 
 
 def render_vis(
