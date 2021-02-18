@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name="bayesian-actmax",
+    name="bayes-actmax",
     packages=find_packages(exclude=["tests", "*.tests", "*.tests.*", "tests.*"]),
     version="0.0.1",
     description=(

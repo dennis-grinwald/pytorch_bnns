@@ -1,0 +1,12 @@
+{   
+    "xp_name": "compute_attribution_maps_curve_inceptionv1",
+    "np_seed": 42,
+    "num_nets": 100, 
+    "batch_size": 50,
+    "num_points": 10,
+    "model_path": "./experiments/curve_inceptionv1/models/model_with_factors.pt",
+    "factors_path": "./experiments/curve_inceptionv1/models/factors.pt" ,
+    "points_path": "./experiments/curve_inceptionv1/high_entropy_points/y_pred_dist_100nets.npy",
+    "attr_maps_save_path": "./experiments/curve_inceptionv1/attr_maps/",
+    "ds": "tiny_imagenet"
+}
