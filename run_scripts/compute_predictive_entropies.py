@@ -85,8 +85,3 @@ save_path = xp_conf['base_path_points'] + xp_conf['xp_name'] + '_high_ent_points
             + xp_conf['model_name']
 
 np.save(save_path, xp_conf)
-
-
-
-
-

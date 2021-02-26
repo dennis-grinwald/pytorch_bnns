@@ -7,9 +7,9 @@ import numpy as np
 from tqdm import tqdm
 from torch import nn, optim, device, cuda
     
-from bayesian_activation_maximisation.src.get_datasets import *
-from bayesian_activation_maximisation.src.bayesian_models.MCD_CNNs import * 
-from bayesian_activation_maximisation.src.train_eval_fn import *
+from bayes_act_max.datasets.get_datasets import *
+from bayes_act_max.bayesian_nn.bayesian_models.MCD_CNNs import * 
+from bayes_act_max.bayesian_nn.train_eval_fn import *
 
 # SETUP #
 
@@ -17,14 +17,16 @@ file_path = './confs/training_conf.json'
 with open(file_path, 'r') as j:
     json_file = json.loads(j.read())
 
-xp_conf = json_file["mcd_training_conf"] 
+xp_conf = json_file['mcd_training_conf'] 
+
 xp_conf['training_stats'] = dict()
 
 if not os.path.exists(xp_conf['path']+'/models/'):
-    os.makedirs(xp_conf['path']+'/models/')
-    os.makedirs(xp_conf['path']+'/results/')
+     os.makedirs(xp_conf['path']+'/models/')
+     os.makedirs(xp_conf['path']+'/results/')
 
 device = device("cuda:0" if cuda.is_available() else "cpu")
+
 print(f'Hardware accelerator: {device}')
 
 # LOAD DATA #

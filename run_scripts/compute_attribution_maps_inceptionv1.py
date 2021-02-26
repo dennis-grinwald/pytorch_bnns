@@ -86,16 +86,13 @@ min_entropy_ids = np.argsort(entropies)
 
 # Loop
 # Compute attribution maps for all images
-for data_id in max_entropy_ids[:1]:
-
-    xp_conf[f'data_id_{data_id}'] = dict()
+for data_id in max_entropy_ids[:10]:
 
     if not os.path.exists(xp_conf['attr_maps_save_path']+f'{data_id}/'):
         os.makedirs(xp_conf['attr_maps_save_path']+f'{data_id}/')
 
     img = testset[data_id][0].reshape(1, 3, 224, 224)
     preprocessed_img = (img - img.min()) / (img.max() - img.min())
-    img = np.transpose(testset[data_id][0], (1,2,0))
 
     plt.imshow(np.transpose(preprocessed_img.reshape(3,224,224),(1,2,0)))
     fig_save_path = xp_conf['attr_maps_save_path']+f'/{data_id}/'+'original_img' 
@@ -108,9 +105,10 @@ for data_id in max_entropy_ids[:1]:
     for i, seed in enumerate(seeds):
         
         # Sample net
-        sample_curve_network(model, inv_factors, estimator, posterior_mean, seeds[0])
+        sample_curve_network(model, inv_factors, estimator, posterior_mean, seed)
 
-        # Compute attribution map
+        #Compute attribution map
+        img = np.transpose(testset[data_id][0], (1,2,0))
         tmp_attr_map_arr, tmp_attr_map_grid = compute_attribution_map(img=img, model=model, 
                                                   cell_image_size=60, n_steps=1024,
                                                   n_groups=6, layer='mixed5b',
@@ -119,13 +117,15 @@ for data_id in max_entropy_ids[:1]:
         attr_maps_arr.append(tmp_attr_map_arr)
         attr_maps_grid.append(tmp_attr_map_grid)
 
+        img = testset[data_id][0].reshape(1, 3, 224, 224)
+
         # Compute network predictions
         pred = model(img.reshape(1, 3, 224, 224).to(device)).max(1)[1].detach().cpu().numpy()
-        preds.append((pred, class_to_name[idx_to_class[pred[0]]]))
+        preds.append((pred[0], class_to_name[idx_to_class[pred[0]]]))
 
-    xp_conf[f'data_id_{data_id}']['attr_maps_arr'] = attr_maps_arr
-    xp_conf[f'data_id_{data_id}']['attr_maps_grid'] = attr_maps_grid
-    xp_conf[f'data_id_{data_id}']['preds'] = preds
+    xp_conf['attr_maps_arr'] = attr_maps_arr
+    xp_conf['attr_maps_grid'] = attr_maps_grid
+    xp_conf['preds'] = preds
 
     xp_save_path = xp_conf['attr_maps_save_path']+f'/{data_id}/'+f'xp_dict_'+'_'.join('_'.join(time.ctime().split(' ')).split(':'))
     np.save(xp_save_path, xp_conf)
