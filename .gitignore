@@ -130,3 +130,6 @@ dmypy.json
 
 experiments/
 data/
+models/
+datasets/
+nbs/

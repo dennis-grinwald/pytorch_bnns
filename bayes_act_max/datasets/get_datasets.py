@@ -3,7 +3,13 @@ import os
 import numpy as np
 import torch
 import torchvision
-from torchvision import transforms
+import torch.utils.data
+import torch.utils.data.distributed
+import torchvision.transforms as transforms
+import torchvision.datasets as datasets
+
+from bayes_act_max.datasets.imagenet_mini_labels import imagenet_mini_labels_dict
+from bayes_act_max.datasets.imagenet_labels import imagenet_labels
 
 def load_cifar10_big_augmented(batch_size=50):
 
@@ -25,7 +31,7 @@ def load_cifar10_big_augmented(batch_size=50):
 
     trainloader = torch.utils.data.DataLoader(
                     trainset, batch_size=batch_size, num_workers=4, pin_memory=True,
-                    shuffle=True) 
+                    shuffle=True)
 
     testset = torchvision.datasets.CIFAR10(root='../../data', train=False,
                                        download=True, transform=val_test_transform)
@@ -57,7 +63,7 @@ def load_cifar10_small_standard(batch_size=50):
 
     trainloader = torch.utils.data.DataLoader(
                     trainset, batch_size=batch_size, num_workers=4, pin_memory=True,
-                    shuffle=True) 
+                    shuffle=True)
 
     testset = torchvision.datasets.CIFAR10(root='../../data', train=False,
                                        download=True, transform=val_test_transform)
@@ -93,7 +99,7 @@ def load_cifar10_small_augmented(batch_size=50):
 
     trainloader = torch.utils.data.DataLoader(
                     trainset, batch_size=batch_size, num_workers=4, pin_memory=True,
-                    shuffle=True) 
+                    shuffle=True)
 
     testset = torchvision.datasets.CIFAR10(root='../../data', train=False,
                     download=True, transform=test_transform)
@@ -126,7 +132,7 @@ def load_tiny_imagenet(pretrained=True, batch_size=32):
     # norm = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     # For other datasets, we could just simply use 0.5:
     # norm = transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-    
+
     print('Preparing dataset ...')
     # Normalization
     norm = torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]) \
@@ -134,7 +140,7 @@ def load_tiny_imagenet(pretrained=True, batch_size=32):
 
     # Normal transformation
     if pretrained:
-        train_trans = [transforms.RandomHorizontalFlip(), transforms.RandomResizedCrop(224), 
+        train_trans = [transforms.RandomHorizontalFlip(), transforms.RandomResizedCrop(224),
                         transforms.ToTensor()]
         val_trans = [transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), norm]
         test_trans = [transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), norm]
@@ -144,15 +150,15 @@ def load_tiny_imagenet(pretrained=True, batch_size=32):
         val_trans = [transforms.ToTensor(), norm]
         test_trans = [transforms.ToTensor(), norm]
 
-    trainset = torchvision.datasets.ImageFolder(train_dir, 
+    trainset = torchvision.datasets.ImageFolder(train_dir,
                                     transform=transforms.Compose(train_trans + [norm]))
-    
-    valset = torchvision.datasets.ImageFolder(train_dir, 
+
+    valset = torchvision.datasets.ImageFolder(train_dir,
                                     transform=transforms.Compose(val_trans))
-    
+
     num_train = len(trainset)
     indices = list(range(num_train))
-    
+
     # val set size
     split = 10000
 
@@ -164,28 +170,28 @@ def load_tiny_imagenet(pretrained=True, batch_size=32):
 
     trainset = torch.utils.data.Subset(trainset, train_idx)
     valset = torch.utils.data.Subset(valset, val_idx)
-    testset = torchvision.datasets.ImageFolder(test_dir, 
+    testset = torchvision.datasets.ImageFolder(test_dir,
                                     transform=transforms.Compose(val_trans))
-    
+
     print('Preparing data loaders ...')
 
     trainloader = torch.utils.data.DataLoader(
         trainset, batch_size=batch_size,
         shuffle=True
-    )    
+    )
 
     valloader = torch.utils.data.DataLoader(
         valset, batch_size=batch_size,
         shuffle=True
     )
-    
+
     testloader = torch.utils.data.DataLoader(
         testset, batch_size=batch_size, num_workers=1, pin_memory=True,
         shuffle=False)
 
     idx_to_class = {i: c for c, i in testset.class_to_idx.items()}
     class_to_name = get_class_name()
-    
+
     return trainloader, valloader, testloader, testset, idx_to_class, class_to_name
 
 def create_val_img_folder():
@@ -223,4 +229,79 @@ def get_class_name():
     fp.close()
     return class_to_name
 
-#create_val_img_folder()
+
+def load_imagenet_mini(bs = 32):
+    data_dir = 'datasets/imagenet_mini/'
+
+    traindir = os.path.join(data_dir, 'train')
+    valdir = os.path.join(data_dir, 'val')
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+
+    train_dataset = datasets.ImageFolder(
+        traindir,
+        transforms.Compose([
+            transforms.RandomResizedCrop(224),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            normalize,
+        ]))
+
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=bs, shuffle=True,
+        num_workers=2, pin_memory=True)
+
+    val_loader = torch.utils.data.DataLoader(
+        datasets.ImageFolder(valdir, transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            normalize,
+        ])),
+        batch_size=bs, shuffle=False,
+        num_workers=2, pin_memory=True)
+
+    labels_dict = imagenet_mini_labels_dict
+
+    return train_loader, val_loader, labels_dict
+
+def load_imagenet_full(bs = 32):
+    data_dir = 'datasets/imagenet/'
+
+    traindir = os.path.join(data_dir, 'train')
+    valdir = os.path.join(data_dir, 'val')
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+
+    train_dataset = datasets.ImageFolder(
+        traindir,
+        transforms.Compose([
+            transforms.RandomResizedCrop(224),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            normalize,
+        ]))
+
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=bs, shuffle=True,
+        num_workers=2, pin_memory=True)
+
+    val_loader = torch.utils.data.DataLoader(
+        datasets.ImageFolder(valdir, transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            normalize,
+        ])),
+        batch_size=bs, shuffle=False,
+        num_workers=2, pin_memory=True)
+
+    labels_list = imagenet_labels
+
+    return train_loader, val_loader, labels_list
+
+
+# if __name__ == "__main__":
+    # train_loader, val_loader, labels_dict = load_imagenet_mini()
+    # train_loader, val_loader, labels_dict = load_imagenet_full()
+    # print(train_loader.dataset.shape)

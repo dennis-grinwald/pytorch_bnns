@@ -1,0 +1,57 @@
+{   
+    "xp_name": "compute_attribution_maps_curve_inceptionv1",
+    "np_seed": 42,
+    "num_nets": 100, 
+    "batch_size": 50,
+    "num_points": 10,
+    "model_path": "./experiments/curve_inceptionv1/models/model_with_factors.pt",
+    "factors_path": "./experiments/curve_inceptionv1/models/factors.pt" ,
+    "points_path": "./experiments/curve_inceptionv1/high_entropy_points/y_pred_dist_100nets.npy",
+    "attr_maps_save_path": "./experiments/curve_inceptionv1/attr_maps/",
+    "ds": "tiny_imagenet"
+}
+
+{
+    "googlenet":
+    {   
+        "xp_name": "attribution_maps",
+        "np_seed": 42,
+        "num_samples": 100, 
+        "bs": 128,
+        "results_path": "/home/dgrinwald/projects/bayesian_activation_maximisation/experiments/",
+        "model": "googlenet",
+        "ds": "imagenet",
+        "estimator": "kfac",
+        "pre_scale": 1281168,
+        "scale": 86.49742103196454,
+        "norm": 392482.2363421563
+    },
+    "resnet50":
+    {   
+        "xp_name": "attribution_maps",
+        "np_seed": 42,
+        "num_samples": 100, 
+        "bs": 128,
+        "results_path": "/home/dgrinwald/projects/bayesian_activation_maximisation/experiments/",
+        "model": "resnet50",
+        "ds": "imagenet",
+        "estimator": "kfac",
+        "pre_scale": 1281168,
+        "scale": 0.00033948092442735695,
+        "norm": 35110.73468856251
+    },
+    "densenet121":
+    {   
+        "xp_name": "attribution_maps",
+        "np_seed": 42,
+        "num_samples": 100, 
+        "bs": 128,
+        "results_path": "/home/dgrinwald/projects/bayesian_activation_maximisation/experiments/",
+        "model": "densenet121",
+        "ds": "imagenet",
+        "estimator": "kfac",
+        "pre_scale": 1281168,
+        "scale": 0.00033948092442735695,
+        "norm": 35110.73468856251
+    }
+}

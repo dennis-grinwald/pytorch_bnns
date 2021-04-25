@@ -1,0 +1,72 @@
+{
+    "googlenet":
+    {   
+        "xp_name": "predictive_entropies",
+        "np_seed": 42,
+        "num_samples": 10, 
+        "results_path": "/home/dgrinwald/projects/bayesian_activation_maximisation/experiments/",
+        "model": "googlenet",
+        "ds": "imagenet",
+        "additional_name": "hp_opt",
+        "no_channels": 10,
+        "bs": 1,
+        "val_size": 25000,
+        "estimator": "kfac",
+        "pre_scale": 1281168,
+        "scale": 0.10232577424135576,
+        "norm": 4037.8554876563785
+    },
+    "resnet50":
+    {   
+        "xp_name": "predictive_entropies",
+        "np_seed": 42,
+        "num_samples": 10, 
+        "results_path": "/home/dgrinwald/projects/bayesian_activation_maximisation/experiments/",
+        "model": "resnet50",
+        "ds": "imagenet",
+        "bs": 128,
+        "val_size": 1000,
+        "estimator": "kfac",
+        "pre_scale": 1281168,
+        "scale": 0.00033948092442735695,
+        "norm": 35110.73468856251
+    },
+    "densenet121":
+    {   
+        "xp_name": "predictive_entropies",
+        "np_seed": 42,
+        "num_samples": 10, 
+        "results_path": "/home/dgrinwald/projects/bayesian_activation_maximisation/experiments/",
+        "model": "densenet121",
+        "ds": "imagenet",
+        "bs": 128,
+        "val_size": 1000,
+        "estimator": "kfac",
+        "pre_scale": 1281168,
+        "scale": 4.663326220146872e-07,
+        "norm": 852824.6353022589
+    },
+
+    "googlenet_hp_opt":
+    {   
+        "xp_name": "predictive_entropies",
+        "np_seed": 42,
+        "num_samples": 2, 
+        "results_path": "/home/dgrinwald/projects/bayesian_activation_maximisation/experiments/",
+        "model": "googlenet",
+        "ds": "imagenet",
+        "bs": 128,
+        "val_size": 200,
+        "estimator": "kfac",
+        "pre_scale": 1281168,
+        "scale": 0.10232577424135576,
+        "norm": 4037.8554876563785
+    },
+
+    "google_net_good_res":
+    {
+        "pre_scale": 1,
+        "scale": 30.0232577424135576,
+        "norm": 23.8554876563785
+    }
+}
