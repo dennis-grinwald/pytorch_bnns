@@ -28,21 +28,21 @@ def main():
 
     ### CONFIG ###
     seed = 42
-    lr = 0.01
-    bs = 32
-    momentum = 0.0
-    weight_decay = 0.0
-    p = 0.0
+    lr = 0.1
+    bs = 256
+    momentum = 0.9
+    weight_decay = 1e-4
+    p = 0.05
     train_flag = True
-    epochs = 100
-    file_path = f'models/imagenet_mini_resnet18_mcdo/bs_{bs}_lr_{lr}_dropout_{p}_wd_{weight_decay}_mo_{momentum}_second_run'
+    epochs = 90
+    file_path = f'models/places365/bs_{bs}_lr_{lr}_dropout_{p}_wd_{weight_decay}_mo_{momentum}'
 
     ### CONFIG ###
 
     if not os.path.exists(file_path):
         os.makedirs(file_path)
 
-    model = resnet18_mcdo(p=p, num_classes=10)
+    model = resnet18_mcdo(p=p, num_classes=365)
 
     if seed is not None:
         random.seed(seed)
@@ -60,7 +60,7 @@ def main_worker(model, bs, seed, lr, momentum, weight_decay, train_flag, epochs,
 
     gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    train_loader, val_loader, labels_dict = get_datasets.load_imagenet_mini(bs=bs)
+    train_loader, val_loader, labels_dict = get_datasets.load_places365(bs=bs)
 
     # Send model to GPU
     model.to(gpu)

@@ -300,6 +300,41 @@ def load_imagenet_full(bs = 32):
 
     return train_loader, val_loader, labels_list
 
+def load_places365(bs = 32):
+    data_dir = '/home/dgrinwald/data/places365/places365_standard/'
+
+    traindir = os.path.join(data_dir, 'train')
+    valdir = os.path.join(data_dir, 'val')
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+
+    train_dataset = datasets.ImageFolder(
+        traindir,
+        transforms.Compose([
+            transforms.RandomResizedCrop(224),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            normalize,
+        ]))
+
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=bs, shuffle=True,
+        num_workers=2, pin_memory=True)
+
+    val_loader = torch.utils.data.DataLoader(
+        datasets.ImageFolder(valdir, transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            normalize,
+        ])),
+        batch_size=bs, shuffle=False,
+        num_workers=2, pin_memory=True)
+
+    labels_list = imagenet_labels
+
+    return train_loader, val_loader, labels_list
+
 
 # if __name__ == "__main__":
     # train_loader, val_loader, labels_dict = load_imagenet_mini()
