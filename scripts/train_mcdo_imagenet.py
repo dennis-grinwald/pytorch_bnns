@@ -19,8 +19,8 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
 
-from bayes_act_max.datasets import get_datasets
-from bayes_act_max.bayesian_nn.bayesian_models.mcdo_resnet18 import resnet18_mcdo
+from src.datasets import get_datasets
+from src.models.mcdo_resnet18 import resnet18_mcdo
 
 best_acc1 = True
 

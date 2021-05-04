@@ -15,10 +15,10 @@ import torch.nn.functional as F
 from curvature.sampling import invert_factors
 from curvature import imagenet
 
-from bayes_act_max.bayesian_nn.utils import eval_curve_bnn
-from bayes_act_max.bayesian_nn.bayesian_models.mcd_utils import *
-from bayes_act_max.bayesian_nn.utils import sample_curve_network, get_network_activations_curve, get_sorted_channel_activations
-from bayes_act_max.datasets.imagenet_labels import imagenet_labels
+from src.train_exp_utils.utils import eval_curve_bnn
+from src.models.mcd_utils import *
+from src.models.utils import sample_curve_network, get_network_activations_curve, get_sorted_channel_activations
+from src.datasets.imagenet_labels import imagenet_labels
  
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", default="googlenet", type=str, help="The model used")

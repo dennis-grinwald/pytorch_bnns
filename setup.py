@@ -4,16 +4,17 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name="bayes-actmax",
+    name="pytorch-bnns",
     packages=find_packages(exclude=["tests", "*.tests", "*.tests.*", "tests.*"]),
     version="0.0.1",
     description=(
-        "Uncertainty in activation maximisation"
+        "PyTorch implementation of BNNs"
     ),
     install_requires=[
-        "torch>=1.5.0",
+        "torch",
         "torchvision",
-        "kornia==0.4.0",
+        "kornia==0.4.1",
+        "torch-lucent==0.1.7",
         "tqdm",
         "numpy",
         "ipython",

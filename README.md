@@ -1,1 +1,1 @@
-# bayesian_activation_maximisation
+# Package to train different kinds of BNNs using PyTorch
