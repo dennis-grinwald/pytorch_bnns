@@ -1,12 +1,3 @@
-from src.models.mcd_utils import DropoutLinear, DropoutConv2d
-
-import torch
-from torch import Tensor
-import torch.nn as nn
-#from .utils import load_state_dict_from_url
-from typing import Type, Any, Callable, Union, List, Optional
-
-
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152', 'resnext50_32x4d', 'resnext101_32x8d',
            'wide_resnet50_2', 'wide_resnet101_2']
@@ -23,6 +14,7 @@ model_urls = {
     'wide_resnet50_2': 'https://download.pytorch.org/models/wide_resnet50_2-95faca4d.pth',
     'wide_resnet101_2': 'https://download.pytorch.org/models/wide_resnet101_2-32ee1156.pth',
 }
+
 
 def conv3x3(
     in_planes: int,

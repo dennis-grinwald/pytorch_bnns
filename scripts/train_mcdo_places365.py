@@ -29,7 +29,7 @@ conf_path = './confs/training_mcdo_conf.json'
 with open(conf_path, 'r') as j:
     xp_conf = json.loads(j.read())['resnet18_mcdo']
 
-### CONFIG ###
+### XP Setup ###
 train_flag = bool(xp_conf["train_flag"])
 prefix = xp_conf["prefix"]
 ds = xp_conf["ds"]
@@ -50,12 +50,10 @@ lr = xp_conf["lr"]
 bs = xp_conf["bs"]
 momentum = xp_conf["momentum"]
 weight_decay = xp_conf["weight_decay"]
-p = xp_conf["p"]   
+p = xp_conf["p"]
 
 
 # Setup distributed training
-rk = 0
-dist_url = 'localhost:12356'
 dist_backend = 'nccl'
 world_size = 1
 mp_str = 'store_false'
@@ -115,12 +113,6 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
 parser.add_argument('--world-size', default=world_size, type=int,
                     help='number of nodes for distributed training')
 
-parser.add_argument('--rank', default=rk, type=int,
-                    help='node rank for distributed training')
-
-parser.add_argument('--dist-url', default=dist_url, type=str,
-                    help='url used to set up distributed training')
-
 parser.add_argument('--dist-backend', default=dist_backend, type=str,
                     help='distributed backend')
 
@@ -158,9 +150,6 @@ def main():
         warnings.warn('You have chosen a specific GPU. This will completely '
                       'disable data parallelism.')
 
-    if args.dist_url == "env://" and args.world_size == -1:
-        args.world_size = int(os.environ["WORLD_SIZE"])
-
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed
 
     ngpus_per_node = torch.cuda.device_count()
@@ -177,19 +166,18 @@ def main():
         # Simply call main_worker function
         main_worker(args.gpu, ngpus_per_node, args)
 
-def setup(rank, world_size):
+def setup(rank, world_size, dist_backend):
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
 
     # initialize the process group
-    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+    dist.init_process_group(dist_backend, rank=rank, world_size=world_size)
 
 def cleanup():
     dist.destroy_process_group()
 
-
 def main_worker(gpu, ngpus_per_node, args):
-    
+
     global best_acc1
     args.gpu = gpu
 
@@ -198,8 +186,8 @@ def main_worker(gpu, ngpus_per_node, args):
 
     if args.distributed:
         if args.multiprocessing_distributed:
-            setup(gpu, ngpus_per_node)
-    
+            setup(gpu, ngpus_per_node, args.dist_backend)
+
     model = resnet18_mcdo(p=args.p, num_classes=args.num_classes)
 
     if not torch.cuda.is_available():
@@ -313,7 +301,7 @@ def main_worker(gpu, ngpus_per_node, args):
         best_acc1 = max(acc1, best_acc1)
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
-                and args.rank % ngpus_per_node == 0):
+                and args.gpu % ngpus_per_node == 0):
             save_checkpoint({
                 'epoch': epoch + 1,
                 'state_dict': model.state_dict(),
@@ -417,9 +405,9 @@ def validate(val_loader, model, criterion, args):
 
 
 def save_checkpoint(state, is_best, file_path=''):
-    torch.save(state, file_path+'model_checkpoint.ptg.tar')
+    torch.save(state, file_path+'model_checkpoint.pth.tar')
     if is_best:
-        shutil.copyfile(file_path+'model_checkpoint.ptg.tar', file_path+'model_best.pth.tar')
+        shutil.copyfile(file_path+'model_checkpoint.pth.tar', file_path+'model_best.pth.tar')
 
 
 class AverageMeter(object):
