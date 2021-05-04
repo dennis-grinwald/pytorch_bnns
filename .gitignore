@@ -128,8 +128,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-experiments/
-data/
-models/
+/models/
 datasets/
-nbs/
