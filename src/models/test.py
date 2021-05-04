@@ -1,7 +1,12 @@
+from src.models.mcd_utils import DropoutLinear, DropoutConv2d
+import torch
+from torch import Tensor
+import torch.nn as nn
+from typing import Type, Any, Callable, Union, List, Optional
+
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152', 'resnext50_32x4d', 'resnext101_32x8d',
            'wide_resnet50_2', 'wide_resnet101_2']
-
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-f37072fd.pth',
@@ -26,6 +31,8 @@ def conv3x3(
     layer: str = "None") -> DropoutConv2d:
     """3x3 convolution with padding"""
 
+    print(f'Conv3x3 method: {p}')
+
     if not layer == "last":
         print(f'Conv3x3 method: {p}')
         return DropoutConv2d(in_planes, out_planes, kernel_size=3, stride=stride,
@@ -36,12 +43,17 @@ def conv3x3(
         return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                          padding=dilation, groups=groups, bias=False, dilation=dilation)
 
+    # return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
+    #                  padding=dilation, groups=groups, bias=False, dilation=dilation)
+
 
 def conv1x1(in_planes: int,
     out_planes: int,
     stride: int = 1,
     p: float = 0.5) -> DropoutConv2d:
     """1x1 convolution"""
+
+    print(f'Conv1x1 method: {p}')
 
     return DropoutConv2d(in_planes, out_planes, kernel_size=1, stride=stride,
                     bias=False,
@@ -66,6 +78,8 @@ class BasicBlock(nn.Module):
         layer: str = "None"
     ) -> None:
         super(BasicBlock, self).__init__()
+
+        print(f'6. BasicBlock method: {p}')
 
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d

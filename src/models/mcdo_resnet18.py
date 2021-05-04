@@ -1,16 +1,12 @@
 from src.models.mcd_utils import DropoutLinear, DropoutConv2d
-
 import torch
 from torch import Tensor
 import torch.nn as nn
-#from .utils import load_state_dict_from_url
 from typing import Type, Any, Callable, Union, List, Optional
-
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152', 'resnext50_32x4d', 'resnext101_32x8d',
            'wide_resnet50_2', 'wide_resnet101_2']
-
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-f37072fd.pth',
@@ -132,8 +128,6 @@ class Bottleneck(nn.Module):
     ) -> None:
         super(Bottleneck, self).__init__()
 
-        print(f'5. Bottleneck method: {p}')
-
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         width = int(planes * (base_width / 64.)) * groups
@@ -220,8 +214,6 @@ class ResNet(nn.Module):
                                        dilate=replace_stride_with_dilation[2], p = p, layer="last")
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
-        print(f'3. resnet_mcdo method: {p}')
-
         # ADD ONE LINEAR LAYER ?
         self.fc = nn.Linear(512 * block.expansion, num_classes)
         # self.fc = nn.Linear(512 * block.expansion, num_classes)
@@ -245,8 +237,6 @@ class ResNet(nn.Module):
 
     def _make_layer(self, block: Type[Union[BasicBlock, Bottleneck]], planes: int, blocks: int,
                     stride: int = 1, dilate: bool = False, p: float = 0.5, layer: str = "None") -> nn.Sequential:
-
-        print(f'4. _make_layers method: {p}')
 
         norm_layer = self._norm_layer
         downsample = None
@@ -302,7 +292,7 @@ def _resnet(
     p: float = 0.5,
     **kwargs: Any
 ) -> ResNet:
-    print(f'2. _resnet method: {p}')
+
     model = ResNet(block, layers, p, **kwargs)
     #if pretrained:
     #    state_dict = load_state_dict_from_url(model_urls[arch],
@@ -317,8 +307,6 @@ def resnet18_mcdo(
             p: float = 0.5,
             **kwargs: Any
             ) -> ResNet:
-
-    print(f'1. resnet_mcdo method: {p}')
 
     r"""ResNet-18 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
