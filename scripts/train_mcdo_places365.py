@@ -20,8 +20,8 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
 
-from src.datasets import get_datasets
-from src.models.mcdo_resnet18 import resnet18_mcdo
+from pbnn.datasets import get_datasets
+from pbnn.models.mcdo_resnet18 import resnet18_mcdo
 
 best_acc1 = True
 # Load config

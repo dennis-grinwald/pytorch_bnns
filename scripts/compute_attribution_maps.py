@@ -12,8 +12,8 @@ import torch
 from torch import cuda, device
 from curvature.sampling import invert_factors
 
-from bayes_act_max.datasets.get_datasets import *
-from bayes_act_max.bayesian_nn.utils import sample_curve_network, compute_attribution_map
+from pbnn.datasets.get_datasets import *
+from pbnn.models.utils import sample_curve_network, compute_attribution_map
 
 import lucent
 from lucent.util import set_seed

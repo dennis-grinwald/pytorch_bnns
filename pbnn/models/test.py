@@ -1,4 +1,4 @@
-from src.models.mcd_utils import DropoutLinear, DropoutConv2d
+from .mcd_utils import DropoutLinear, DropoutConv2d
 import torch
 from torch import Tensor
 import torch.nn as nn
@@ -20,6 +20,7 @@ model_urls = {
     'wide_resnet101_2': 'https://download.pytorch.org/models/wide_resnet101_2-32ee1156.pth',
 }
 
+
 def conv3x3(
     in_planes: int,
     out_planes: int,
@@ -29,6 +30,8 @@ def conv3x3(
     p: float = 0.5,
     layer: str = "None") -> DropoutConv2d:
     """3x3 convolution with padding"""
+
+    print(f'Conv3x3 method: {p}')
 
     if not layer == "last":
         print(f'Conv3x3 method: {p}')
@@ -40,12 +43,17 @@ def conv3x3(
         return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                          padding=dilation, groups=groups, bias=False, dilation=dilation)
 
+    # return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
+    #                  padding=dilation, groups=groups, bias=False, dilation=dilation)
+
 
 def conv1x1(in_planes: int,
     out_planes: int,
     stride: int = 1,
     p: float = 0.5) -> DropoutConv2d:
     """1x1 convolution"""
+
+    print(f'Conv1x1 method: {p}')
 
     return DropoutConv2d(in_planes, out_planes, kernel_size=1, stride=stride,
                     bias=False,
@@ -70,6 +78,8 @@ class BasicBlock(nn.Module):
         layer: str = "None"
     ) -> None:
         super(BasicBlock, self).__init__()
+
+        print(f'6. BasicBlock method: {p}')
 
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
@@ -127,6 +137,8 @@ class Bottleneck(nn.Module):
         p: float = 0.5
     ) -> None:
         super(Bottleneck, self).__init__()
+
+        print(f'5. Bottleneck method: {p}')
 
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
@@ -214,6 +226,8 @@ class ResNet(nn.Module):
                                        dilate=replace_stride_with_dilation[2], p = p, layer="last")
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
+        print(f'3. resnet_mcdo method: {p}')
+
         # ADD ONE LINEAR LAYER ?
         self.fc = nn.Linear(512 * block.expansion, num_classes)
         # self.fc = nn.Linear(512 * block.expansion, num_classes)
@@ -237,6 +251,8 @@ class ResNet(nn.Module):
 
     def _make_layer(self, block: Type[Union[BasicBlock, Bottleneck]], planes: int, blocks: int,
                     stride: int = 1, dilate: bool = False, p: float = 0.5, layer: str = "None") -> nn.Sequential:
+
+        print(f'4. _make_layers method: {p}')
 
         norm_layer = self._norm_layer
         downsample = None
@@ -292,7 +308,7 @@ def _resnet(
     p: float = 0.5,
     **kwargs: Any
 ) -> ResNet:
-
+    print(f'2. _resnet method: {p}')
     model = ResNet(block, layers, p, **kwargs)
     #if pretrained:
     #    state_dict = load_state_dict_from_url(model_urls[arch],
@@ -307,6 +323,8 @@ def resnet18_mcdo(
             p: float = 0.5,
             **kwargs: Any
             ) -> ResNet:
+
+    print(f'1. resnet_mcdo method: {p}')
 
     r"""ResNet-18 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
