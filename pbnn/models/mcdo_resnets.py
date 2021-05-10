@@ -124,7 +124,8 @@ class Bottleneck(nn.Module):
         base_width: int = 64,
         dilation: int = 1,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
-        p: float = 0.5
+        p: float = 0.5,
+        layer: str = "None"
     ) -> None:
         super(Bottleneck, self).__init__()
 
@@ -134,7 +135,7 @@ class Bottleneck(nn.Module):
         # Both self.conv2 and self.downsample layers downsample the input when stride != 1
         self.conv1 = conv1x1(inplanes, width, p = p)
         self.bn1 = norm_layer(width)
-        self.conv2 = conv3x3(width, width, stride, groups, dilation, p = p)
+        self.conv2 = conv3x3(width, width, stride, groups, dilation, p = p, layer = layer)
         self.bn2 = norm_layer(width)
         self.conv3 = conv1x1(width, planes * self.expansion, p = p)
         self.bn3 = norm_layer(planes * self.expansion)
@@ -301,7 +302,7 @@ def _resnet(
     return model
 
 
-def resnet18_mcdo(
+def mcdo_resnet18(
             pretrained: bool = False,
             progress: bool = True,
             p: float = 0.5,
@@ -331,7 +332,7 @@ def resnet34(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> 
                    **kwargs)
 
 
-def resnet50(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> ResNet:
+def mcdo_resnet50(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> ResNet:
     r"""ResNet-50 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
 
@@ -355,7 +356,7 @@ def resnet101(pretrained: bool = False, progress: bool = True, **kwargs: Any) ->
                    **kwargs)
 
 
-def resnet152(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> ResNet:
+def mcdo_resnet152(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> ResNet:
     r"""ResNet-152 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
 

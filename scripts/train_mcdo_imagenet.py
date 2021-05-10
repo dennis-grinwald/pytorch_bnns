@@ -1,446 +1,429 @@
-import argparse, os, shutil, time, warnings
-from datetime import datetime
-from pathlib import Path
-import sys, os
-import math
-import collections
-import gc
+import argparse
+import os
+import random
+import shutil
+import time
+import warnings
 
 import torch
-from torch.autograd import Variable
 import torch.nn as nn
+import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 import torch.optim
+import torch.multiprocessing as mp
 import torch.utils.data
 import torch.utils.data.distributed
+import torchvision.transforms as transforms
+import torchvision.datasets as datasets
+import torchvision.models as models
 
-# import models
-from fp16util import *
+model_names = sorted(name for name in models.__dict__
+    if name.islower() and not name.startswith("__")
+    and callable(models.__dict__[name]))
 
-import resnet
-import copy
+parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
+parser.add_argument('data', metavar='DIR',
+                    help='path to dataset')
+parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
+                    choices=model_names,
+                    help='model architecture: ' +
+                        ' | '.join(model_names) +
+                        ' (default: resnet18)')
+parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
+                    help='number of data loading workers (default: 4)')
+parser.add_argument('--epochs', default=90, type=int, metavar='N',
+                    help='number of total epochs to run')
+parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
+                    help='manual epoch number (useful on restarts)')
+parser.add_argument('-b', '--batch-size', default=256, type=int,
+                    metavar='N',
+                    help='mini-batch size (default: 256), this is the total '
+                         'batch size of all GPUs on the current node when '
+                         'using Data Parallel or Distributed Data Parallel')
+parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
+                    metavar='LR', help='initial learning rate', dest='lr')
+parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
+                    help='momentum')
+parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
+                    metavar='W', help='weight decay (default: 1e-4)',
+                    dest='weight_decay')
+parser.add_argument('-p', '--print-freq', default=10, type=int,
+                    metavar='N', help='print frequency (default: 10)')
+parser.add_argument('--resume', default='', type=str, metavar='PATH',
+                    help='path to latest checkpoint (default: none)')
+parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
+                    help='evaluate model on validation set')
+parser.add_argument('--pretrained', dest='pretrained', action='store_true',
+                    help='use pre-trained model')
+parser.add_argument('--world-size', default=-1, type=int,
+                    help='number of nodes for distributed training')
+parser.add_argument('--rank', default=-1, type=int,
+                    help='node rank for distributed training')
+parser.add_argument('--dist-url', default='tcp://224.66.41.62:23456', type=str,
+                    help='url used to set up distributed training')
+parser.add_argument('--dist-backend', default='nccl', type=str,
+                    help='distributed backend')
+parser.add_argument('--seed', default=None, type=int,
+                    help='seed for initializing training. ')
+parser.add_argument('--gpu', default=None, type=int,
+                    help='GPU id to use.')
+parser.add_argument('--multiprocessing-distributed', action='store_true',
+                    help='Use multi-processing distributed training to launch '
+                         'N processes per node, which has N GPUs. This is the '
+                         'fastest way to use PyTorch for either single node or '
+                         'multi node data parallel training')
 
-import dataloader
-import experimental_utils
-import dist_utils
-from logger import TensorboardLogger, FileLogger
-from meter import AverageMeter, NetworkMeter, TimeMeter
+best_acc1 = 0
 
-def get_parser():
-    parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-    parser.add_argument('data', metavar='DIR', help='path to dataset')
-    parser.add_argument('--phases', type=str,
-                    help='Specify epoch order of data resize and learning rate schedule: [{"ep":0,"sz":128,"bs":64},{"ep":5,"lr":1e-2}]')
-    # parser.add_argument('--save-dir', type=str, default=Path.cwd(), help='Directory to save logs and models.')
-    parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
-                        help='number of data loading workers (default: 8)')
-    parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
-                        help='manual epoch number (useful on restarts)')
-    parser.add_argument('--momentum', default=0.9, type=float, metavar='M', help='momentum')
-    parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
-                        metavar='W', help='weight decay (default: 1e-4)')
-    parser.add_argument('--init-bn0', action='store_true', help='Intialize running batch norm mean to 0')
-    parser.add_argument('--print-freq', '-p', default=5, type=int,
-                        metavar='N', help='log/print every this many steps (default: 5)')
-    parser.add_argument('--no-bn-wd', action='store_true', help='Remove batch norm from weight decay')
-    parser.add_argument('--resume', default='', type=str, metavar='PATH',
-                        help='path to latest checkpoint (default: none)')
-    parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
-                        help='evaluate model on validation set')
-    parser.add_argument('--fp16', action='store_true', help='Run model fp16 mode. Default True')
-    parser.add_argument('--loss-scale', type=float, default=1024,
-                        help='Loss scaling, positive power of 2 values can improve fp16 convergence.')
-    parser.add_argument('--distributed', action='store_true', help='Run distributed training. Default True')
-    parser.add_argument('--dist-url', default='env://', type=str,
-                        help='url used to set up distributed training')
-    parser.add_argument('--dist-backend', default='nccl', type=str, help='distributed backend')
-    parser.add_argument('--local_rank', default=0, type=int,
-                        help='Used for multi-process training. Can either be manually set ' +
-                        'or automatically set by using \'python -m multiproc\'.')
-    parser.add_argument('--logdir', default='', type=str,
-                        help='where logs go')
-    parser.add_argument('--skip-auto-shutdown', action='store_true',
-                        help='Shutdown instance at the end of training or failure')
-    parser.add_argument('--auto-shutdown-success-delay-mins', default=10, type=int,
-                        help='how long to wait until shutting down on success')
-    parser.add_argument('--auto-shutdown-failure-delay-mins', default=60, type=int,
-                        help='how long to wait before shutting down on error')
-
-
-    parser.add_argument('--short-epoch', action='store_true',
-                        help='make epochs short (for debugging)')
-    return parser
-
-cudnn.benchmark = True
-args = get_parser().parse_args()
-
-# Only want master rank logging to tensorboard
-is_master = (not args.distributed) or (dist_utils.env_rank()==0)
-is_rank0 = args.local_rank == 0
-tb = TensorboardLogger(args.logdir, is_master=is_master)
-log = FileLogger(args.logdir, is_master=is_master, is_rank0=is_rank0)
 
 def main():
-    os.system('shutdown -c')  # cancel previous shutdown command
-    log.console(args)
-    tb.log('sizes/world', dist_utils.env_world_size())
+    args = parser.parse_args()
 
-    # need to index validation directory before we start counting the time
-    dataloader.sort_ar(args.data+'/validation')
+    if args.seed is not None:
+        random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        cudnn.deterministic = True
+        warnings.warn('You have chosen to seed training. '
+                      'This will turn on the CUDNN deterministic setting, '
+                      'which can slow down your training considerably! '
+                      'You may see unexpected behavior when restarting '
+                      'from checkpoints.')
+
+    if args.gpu is not None:
+        warnings.warn('You have chosen a specific GPU. This will completely '
+                      'disable data parallelism.')
+
+    if args.dist_url == "env://" and args.world_size == -1:
+        args.world_size = int(os.environ["WORLD_SIZE"])
+
+    args.distributed = args.world_size > 1 or args.multiprocessing_distributed
+
+    ngpus_per_node = torch.cuda.device_count()
+    if args.multiprocessing_distributed:
+        # Since we have ngpus_per_node processes per node, the total world_size
+        # needs to be adjusted accordingly
+        args.world_size = ngpus_per_node * args.world_size
+        # Use torch.multiprocessing.spawn to launch distributed processes: the
+        # main_worker process function
+        mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args))
+    else:
+        # Simply call main_worker function
+        main_worker(args.gpu, ngpus_per_node, args)
+
+
+def main_worker(gpu, ngpus_per_node, args):
+    global best_acc1
+    args.gpu = gpu
+
+    if args.gpu is not None:
+        print("Use GPU: {} for training".format(args.gpu))
 
     if args.distributed:
-        log.console('Distributed initializing process group')
-        torch.cuda.set_device(args.local_rank)
-        dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url, world_size=dist_utils.env_world_size())
-        assert(dist_utils.env_world_size() == dist.get_world_size())
-        log.console("Distributed: success (%d/%d)"%(args.local_rank, dist.get_world_size()))
+        if args.dist_url == "env://" and args.rank == -1:
+            args.rank = int(os.environ["RANK"])
+        if args.multiprocessing_distributed:
+            # For multiprocessing distributed training, rank needs to be the
+            # global rank among all the processes
+            args.rank = args.rank * ngpus_per_node + gpu
+        dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
+                                world_size=args.world_size, rank=args.rank)
+    # create model
+    if args.pretrained:
+        print("=> using pre-trained model '{}'".format(args.arch))
+        model = models.__dict__[args.arch](pretrained=True)
+    else:
+        print("=> creating model '{}'".format(args.arch))
+        model = models.__dict__[args.arch]()
 
-
-    log.console("Loading model")
-    model = resnet.resnet50(bn0=args.init_bn0).cuda()
-    if args.fp16: model = network_to_half(model)
-    if args.distributed: model = dist_utils.DDP(model, device_ids=[args.local_rank], output_device=args.local_rank)
-    best_top5 = 93 # only save models over 93%. Otherwise it stops to save every time
-
-    global model_params, master_params
-    if args.fp16: model_params, master_params = prep_param_lists(model)
-    else: model_params = master_params = model.parameters()
-
-    optim_params = experimental_utils.bnwd_optim_params(model, model_params, master_params) if args.no_bn_wd else master_params
+    if not torch.cuda.is_available():
+        print('using CPU, this will be slow')
+    elif args.distributed:
+        # For multiprocessing distributed, DistributedDataParallel constructor
+        # should always set the single device scope, otherwise,
+        # DistributedDataParallel will use all available devices.
+        if args.gpu is not None:
+            torch.cuda.set_device(args.gpu)
+            model.cuda(args.gpu)
+            # When using a single GPU per process and per
+            # DistributedDataParallel, we need to divide the batch size
+            # ourselves based on the total number of GPUs we have
+            args.batch_size = int(args.batch_size / ngpus_per_node)
+            args.workers = int((args.workers + ngpus_per_node - 1) / ngpus_per_node)
+            model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
+        else:
+            model.cuda()
+            # DistributedDataParallel will divide and allocate batch_size to all
+            # available GPUs if device_ids are not set
+            model = torch.nn.parallel.DistributedDataParallel(model)
+    elif args.gpu is not None:
+        torch.cuda.set_device(args.gpu)
+        model = model.cuda(args.gpu)
+    else:
+        # DataParallel will divide and allocate batch_size to all available GPUs
+        if args.arch.startswith('alexnet') or args.arch.startswith('vgg'):
+            model.features = torch.nn.DataParallel(model.features)
+            model.cuda()
+        else:
+            model = torch.nn.DataParallel(model).cuda()
 
     # define loss function (criterion) and optimizer
-    criterion = nn.CrossEntropyLoss().cuda()
-    optimizer = torch.optim.SGD(optim_params, 0, momentum=args.momentum, weight_decay=args.weight_decay) # start with 0 lr. Scheduler will change this later
+    criterion = nn.CrossEntropyLoss().cuda(args.gpu)
 
+    optimizer = torch.optim.SGD(model.parameters(), args.lr,
+                                momentum=args.momentum,
+                                weight_decay=args.weight_decay)
+
+    # optionally resume from a checkpoint
     if args.resume:
-        checkpoint = torch.load(args.resume, map_location = lambda storage, loc: storage.cuda(args.local_rank))
-        model.load_state_dict(checkpoint['state_dict'])
-        args.start_epoch = checkpoint['epoch']
-        best_top5 = checkpoint['best_top5']
-        optimizer.load_state_dict(checkpoint['optimizer'])
+        if os.path.isfile(args.resume):
+            print("=> loading checkpoint '{}'".format(args.resume))
+            if args.gpu is None:
+                checkpoint = torch.load(args.resume)
+            else:
+                # Map model to be loaded to specified single gpu.
+                loc = 'cuda:{}'.format(args.gpu)
+                checkpoint = torch.load(args.resume, map_location=loc)
+            args.start_epoch = checkpoint['epoch']
+            best_acc1 = checkpoint['best_acc1']
+            if args.gpu is not None:
+                # best_acc1 may be from a checkpoint from a different GPU
+                best_acc1 = best_acc1.to(args.gpu)
+            model.load_state_dict(checkpoint['state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer'])
+            print("=> loaded checkpoint '{}' (epoch {})"
+                  .format(args.resume, checkpoint['epoch']))
+        else:
+            print("=> no checkpoint found at '{}'".format(args.resume))
 
-    # save script so we can reproduce from logs
-    shutil.copy2(os.path.realpath(__file__), f'{args.logdir}')
+    cudnn.benchmark = True
 
-    log.console("Creating data loaders (this could take up to 10 minutes if volume needs to be warmed up)")
-    phases = eval(args.phases)
-    dm = DataManager([copy.deepcopy(p) for p in phases if 'bs' in p])
-    scheduler = Scheduler(optimizer, [copy.deepcopy(p) for p in phases if 'lr' in p])
+    # Data loading code
+    traindir = os.path.join(args.data, 'train')
+    valdir = os.path.join(args.data, 'val')
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
 
-    start_time = datetime.now() # Loading start to after everything is loaded
-    if args.evaluate: return validate(dm.val_dl, model, criterion, 0, start_time)
+    train_dataset = datasets.ImageFolder(
+        traindir,
+        transforms.Compose([
+            transforms.RandomResizedCrop(224),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            normalize,
+        ]))
 
     if args.distributed:
-        log.console('Syncing machines before training')
-        dist_utils.sum_tensor(torch.tensor([1.0]).float().cuda())
+        train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    else:
+        train_sampler = None
 
-    log.event("~~epoch\thours\ttop1\ttop5\n")
-    for epoch in range(args.start_epoch, scheduler.tot_epochs):
-        dm.set_epoch(epoch)
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
+        num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
-        train(dm.trn_dl, model, criterion, optimizer, scheduler, epoch)
-        top1, top5 = validate(dm.val_dl, model, criterion, epoch, start_time)
+    val_loader = torch.utils.data.DataLoader(
+        datasets.ImageFolder(valdir, transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            normalize,
+        ])),
+        batch_size=args.batch_size, shuffle=False,
+        num_workers=args.workers, pin_memory=True)
 
-        time_diff = (datetime.now()-start_time).total_seconds()/3600.0
-        log.event(f'~~{epoch}\t{time_diff:.5f}\t\t{top1:.3f}\t\t{top5:.3f}\n')
+    if args.evaluate:
+        validate(val_loader, model, criterion, args)
+        return
 
-        is_best = top5 > best_top5
-        best_top5 = max(top5, best_top5)
-        if args.local_rank == 0:
-            if is_best: save_checkpoint(epoch, model, best_top5, optimizer, is_best=True, filename='model_best.pth.tar')
-            phase = dm.get_phase(epoch)
-            if phase: save_checkpoint(epoch, model, best_top5, optimizer, filename=f'sz{phase["bs"]}_checkpoint.path.tar')
+    for epoch in range(args.start_epoch, args.epochs):
+        if args.distributed:
+            train_sampler.set_epoch(epoch)
+        adjust_learning_rate(optimizer, epoch, args)
+
+        # train for one epoch
+        train(train_loader, model, criterion, optimizer, epoch, args)
+
+        # evaluate on validation set
+        acc1 = validate(val_loader, model, criterion, args)
+
+        # remember best acc@1 and save checkpoint
+        is_best = acc1 > best_acc1
+        best_acc1 = max(acc1, best_acc1)
+
+        if not args.multiprocessing_distributed or (args.multiprocessing_distributed
+                and args.rank % ngpus_per_node == 0):
+            save_checkpoint({
+                'epoch': epoch + 1,
+                'arch': args.arch,
+                'state_dict': model.state_dict(),
+                'best_acc1': best_acc1,
+                'optimizer' : optimizer.state_dict(),
+            }, is_best)
 
 
-def train(trn_loader, model, criterion, optimizer, scheduler, epoch):
-    net_meter = NetworkMeter()
-    timer = TimeMeter()
-    losses = AverageMeter()
-    top1 = AverageMeter()
-    top5 = AverageMeter()
+def train(train_loader, model, criterion, optimizer, epoch, args):
+    batch_time = AverageMeter('Time', ':6.3f')
+    data_time = AverageMeter('Data', ':6.3f')
+    losses = AverageMeter('Loss', ':.4e')
+    top1 = AverageMeter('Acc@1', ':6.2f')
+    top5 = AverageMeter('Acc@5', ':6.2f')
+    progress = ProgressMeter(
+        len(train_loader),
+        [batch_time, data_time, losses, top1, top5],
+        prefix="Epoch: [{}]".format(epoch))
 
     # switch to train mode
     model.train()
-    for i,(input,target) in enumerate(trn_loader):
-        if args.short_epoch and (i > 10): break
-        batch_num = i+1
-        timer.batch_start()
-        scheduler.update_lr(epoch, i+1, len(trn_loader))
+
+    end = time.time()
+    for i, (images, target) in enumerate(train_loader):
+        # measure data loading time
+        data_time.update(time.time() - end)
+
+        if args.gpu is not None:
+            images = images.cuda(args.gpu, non_blocking=True)
+        if torch.cuda.is_available():
+            target = target.cuda(args.gpu, non_blocking=True)
 
         # compute output
-        output = model(input)
+        output = model(images)
         loss = criterion(output, target)
 
-        # compute gradient and do SGD step
-        if args.fp16:
-            loss = loss*args.loss_scale
-            model.zero_grad()
-            loss.backward()
-            model_grads_to_master_grads(model_params, master_params)
-            for param in master_params: param.grad.data = param.grad.data/args.loss_scale
-            optimizer.step()
-            master_params_to_model_params(model_params, master_params)
-            loss = loss/args.loss_scale
-        else:
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-        # Train batch done. Logging results
-        timer.batch_end()
-        corr1, corr5 = correct(output.data, target, topk=(1, 5))
-        reduced_loss, batch_total = to_python_float(loss.data), to_python_float(input.size(0))
-        if args.distributed: # Must keep track of global batch size, since not all machines are guaranteed equal batches at the end of an epoch
-            metrics = torch.tensor([batch_total, reduced_loss, corr1, corr5]).float().cuda()
-            batch_total, reduced_loss, corr1, corr5 = dist_utils.sum_tensor(metrics).cpu().numpy()
-            reduced_loss = reduced_loss/dist_utils.env_world_size()
-        top1acc = to_python_float(corr1)*(100.0/batch_total)
-        top5acc = to_python_float(corr5)*(100.0/batch_total)
-
-        losses.update(reduced_loss, batch_total)
-        top1.update(top1acc, batch_total)
-        top5.update(top5acc, batch_total)
-
-        should_print = (batch_num%args.print_freq == 0) or (batch_num==len(trn_loader))
-        if args.local_rank == 0 and should_print:
-            tb.log_memory()
-            tb.log_trn_times(timer.batch_time.val, timer.data_time.val, input.size(0))
-            tb.log_trn_loss(losses.val, top1.val, top5.val)
-
-            recv_gbit, transmit_gbit = net_meter.update_bandwidth()
-            tb.log("sizes/batch_total", batch_total)
-            tb.log('net/recv_gbit', recv_gbit)
-            tb.log('net/transmit_gbit', transmit_gbit)
-
-            output = (f'Epoch: [{epoch}][{batch_num}/{len(trn_loader)}]\t'
-                      f'Time {timer.batch_time.val:.3f} ({timer.batch_time.avg:.3f})\t'
-                      f'Loss {losses.val:.4f} ({losses.avg:.4f})\t'
-                      f'Acc@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-                      f'Acc@5 {top5.val:.3f} ({top5.avg:.3f})\t'
-                      f'Data {timer.data_time.val:.3f} ({timer.data_time.avg:.3f})\t'
-                      f'BW {recv_gbit:.3f} {transmit_gbit:.3f}')
-            log.verbose(output)
-
-        tb.update_step_count(batch_total)
-
-
-def validate(val_loader, model, criterion, epoch, start_time):
-    timer = TimeMeter()
-    losses = AverageMeter()
-    top1 = AverageMeter()
-    top5 = AverageMeter()
-
-    model.eval()
-    eval_start_time = time.time()
-
-    for i,(input,target) in enumerate(val_loader):
-        if args.short_epoch and (i > 10): break
-        batch_num = i+1
-        timer.batch_start()
-        if args.distributed:
-            top1acc, top5acc, loss, batch_total = distributed_predict(input, target, model, criterion)
-        else:
-            with torch.no_grad():
-                output = model(input)
-                loss = criterion(output, target).data
-            batch_total = input.size(0)
-            top1acc, top5acc = accuracy(output.data, target, topk=(1,5))
-
-        # Eval batch done. Logging results
-        timer.batch_end()
-        losses.update(to_python_float(loss), to_python_float(batch_total))
-        top1.update(to_python_float(top1acc), to_python_float(batch_total))
-        top5.update(to_python_float(top5acc), to_python_float(batch_total))
-        should_print = (batch_num%args.print_freq == 0) or (batch_num==len(val_loader))
-        if args.local_rank == 0 and should_print:
-            output = (f'Test:  [{epoch}][{batch_num}/{len(val_loader)}]\t'
-                      f'Time {timer.batch_time.val:.3f} ({timer.batch_time.avg:.3f})\t'
-                      f'Loss {losses.val:.4f} ({losses.avg:.4f})\t'
-                      f'Acc@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-                      f'Acc@5 {top5.val:.3f} ({top5.avg:.3f})')
-            log.verbose(output)
-
-    tb.log_eval(top1.avg, top5.avg, time.time()-eval_start_time)
-    tb.log('epoch', epoch)
-
-    return top1.avg, top5.avg
-
-def distributed_predict(input, target, model, criterion):
-    # Allows distributed prediction on uneven batches. Test set isn't always large enough for every GPU to get a batch
-    batch_size = input.size(0)
-    output = loss = corr1 = corr5 = valid_batches = 0
-
-    if batch_size:
-        with torch.no_grad():
-            output = model(input)
-            loss = criterion(output, target).data
         # measure accuracy and record loss
-        valid_batches = 1
-        corr1, corr5 = correct(output.data, target, topk=(1, 5))
+        acc1, acc5 = accuracy(output, target, topk=(1, 5))
+        losses.update(loss.item(), images.size(0))
+        top1.update(acc1[0], images.size(0))
+        top5.update(acc5[0], images.size(0))
 
-    metrics = torch.tensor([batch_size, valid_batches, loss, corr1, corr5]).float().cuda()
-    batch_total, valid_batches, reduced_loss, corr1, corr5 = dist_utils.sum_tensor(metrics).cpu().numpy()
-    reduced_loss = reduced_loss/valid_batches
+        # compute gradient and do SGD step
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
-    top1 = corr1*(100.0/batch_total)
-    top5 = corr5*(100.0/batch_total)
-    return top1, top5, reduced_loss, batch_total
+        # measure elapsed time
+        batch_time.update(time.time() - end)
+        end = time.time()
+
+        if i % args.print_freq == 0:
+            progress.display(i)
 
 
-class DataManager():
-    def __init__(self, phases):
-        self.phases = self.preload_phase_data(phases)
-    def set_epoch(self, epoch):
-        cur_phase = self.get_phase(epoch)
-        if cur_phase: self.set_data(cur_phase)
-        if hasattr(self.trn_smp, 'set_epoch'): self.trn_smp.set_epoch(epoch)
-        if hasattr(self.val_smp, 'set_epoch'): self.val_smp.set_epoch(epoch)
+def validate(val_loader, model, criterion, args):
+    batch_time = AverageMeter('Time', ':6.3f')
+    losses = AverageMeter('Loss', ':.4e')
+    top1 = AverageMeter('Acc@1', ':6.2f')
+    top5 = AverageMeter('Acc@5', ':6.2f')
+    progress = ProgressMeter(
+        len(val_loader),
+        [batch_time, losses, top1, top5],
+        prefix='Test: ')
 
-    def get_phase(self, epoch):
-        return next((p for p in self.phases if p['ep'] == epoch), None)
+    # switch to evaluate mode
+    model.eval()
 
-    def set_data(self, phase):
-        """Initializes data loader."""
-        if phase.get('keep_dl', False):
-            log.event(f'Batch size changed: {phase["bs"]}')
-            tb.log_size(phase['bs'])
-            self.trn_dl.update_batch_size(phase['bs'])
-            return
+    with torch.no_grad():
+        end = time.time()
+        for i, (images, target) in enumerate(val_loader):
+            if args.gpu is not None:
+                images = images.cuda(args.gpu, non_blocking=True)
+            if torch.cuda.is_available():
+                target = target.cuda(args.gpu, non_blocking=True)
 
-        log.event(f'Dataset changed.\nImage size: {phase["sz"]}\nBatch size: {phase["bs"]}\nTrain Directory: {phase["trndir"]}\nValidation Directory: {phase["valdir"]}')
-        tb.log_size(phase['bs'], phase['sz'])
+            # compute output
+            output = model(images)
+            loss = criterion(output, target)
 
-        self.trn_dl, self.val_dl, self.trn_smp, self.val_smp = phase['data']
-        self.phases.remove(phase)
+            # measure accuracy and record loss
+            acc1, acc5 = accuracy(output, target, topk=(1, 5))
+            losses.update(loss.item(), images.size(0))
+            top1.update(acc1[0], images.size(0))
+            top5.update(acc5[0], images.size(0))
 
-        # clear memory before we begin training
-        gc.collect()
+            # measure elapsed time
+            batch_time.update(time.time() - end)
+            end = time.time()
 
-    def preload_phase_data(self, phases):
-        for phase in phases:
-            if not phase.get('keep_dl', False):
-                self.expand_directories(phase)
-                phase['data'] = self.preload_data(**phase)
-        return phases
+            if i % args.print_freq == 0:
+                progress.display(i)
 
-    def expand_directories(self, phase):
-        trndir = phase.get('trndir', '')
-        valdir = phase.get('valdir', trndir)
-        phase['trndir'] = args.data+trndir+'/train'
-        phase['valdir'] = args.data+valdir+'/validation'
+        # TODO: this should also be done with the ProgressMeter
+        print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
+              .format(top1=top1, top5=top5))
 
-    def preload_data(self, ep, sz, bs, trndir, valdir, **kwargs): # dummy ep var to prevent error
-        if 'lr' in kwargs: del kwargs['lr'] # in case we mix schedule and data phases
-        """Pre-initializes data-loaders. Use set_data to start using it."""
-        if sz == 128: val_bs = max(bs, 512)
-        elif sz == 224: val_bs = max(bs, 256)
-        else: val_bs = max(bs, 128)
-        return dataloader.get_loaders(trndir, valdir, bs=bs, val_bs=val_bs, sz=sz, workers=args.workers, distributed=args.distributed, **kwargs)
+    return top1.avg
 
-# ### Learning rate scheduler
-class Scheduler():
-    def __init__(self, optimizer, phases):
-        self.optimizer = optimizer
-        self.current_lr = None
-        self.phases = [self.format_phase(p) for p in phases]
-        self.tot_epochs = max([max(p['ep']) for p in self.phases])
 
-    def format_phase(self, phase):
-        phase['ep'] = listify(phase['ep'])
-        phase['lr'] = listify(phase['lr'])
-        if len(phase['lr']) == 2:
-            assert (len(phase['ep']) == 2), 'Linear learning rates must contain end epoch'
-        return phase
-
-    def linear_phase_lr(self, phase, epoch, batch_curr, batch_tot):
-        lr_start, lr_end = phase['lr']
-        ep_start, ep_end = phase['ep']
-        if 'epoch_step' in phase: batch_curr = 0 # Optionally change learning rate through epoch step
-        ep_relative = epoch - ep_start
-        ep_tot = ep_end - ep_start
-        return self.calc_linear_lr(lr_start, lr_end, ep_relative, batch_curr, ep_tot, batch_tot)
-
-    def calc_linear_lr(self, lr_start, lr_end, epoch_curr, batch_curr, epoch_tot, batch_tot):
-        step_tot = epoch_tot * batch_tot
-        step_curr = epoch_curr * batch_tot + batch_curr
-        step_size = (lr_end - lr_start)/step_tot
-        return lr_start + step_curr * step_size
-
-    def get_current_phase(self, epoch):
-        for phase in reversed(self.phases):
-            if (epoch >= phase['ep'][0]): return phase
-        raise Exception('Epoch out of range')
-
-    def get_lr(self, epoch, batch_curr, batch_tot):
-        phase = self.get_current_phase(epoch)
-        if len(phase['lr']) == 1: return phase['lr'][0] # constant learning rate
-        return self.linear_phase_lr(phase, epoch, batch_curr, batch_tot)
-
-    def update_lr(self, epoch, batch_num, batch_tot):
-        lr = self.get_lr(epoch, batch_num, batch_tot)
-        if self.current_lr == lr: return
-        if ((batch_num == 1) or (batch_num == batch_tot)):
-            log.event(f'Changing LR from {self.current_lr} to {lr}')
-
-        self.current_lr = lr
-        for param_group in self.optimizer.param_groups:
-            param_group['lr'] = lr
-
-        tb.log("sizes/lr", lr)
-        tb.log("sizes/momentum", args.momentum)
-
-# item() is a recent addition, so this helps with backward compatibility.
-def to_python_float(t):
-    if isinstance(t, (float, int)): return t
-    if hasattr(t, 'item'): return t.item()
-    else: return t[0]
-
-def save_checkpoint(epoch, model, best_top5, optimizer, is_best=False, filename='checkpoint.pth.tar'):
-    state = {
-        'epoch': epoch+1, 'state_dict': model.state_dict(),
-        'best_top5': best_top5, 'optimizer' : optimizer.state_dict(),
-    }
+def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
     torch.save(state, filename)
-    if is_best: shutil.copyfile(filename, f'{args.logdir}/{filename}')
+    if is_best:
+        shutil.copyfile(filename, 'model_best.pth.tar')
+
+
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+    def __init__(self, name, fmt=':f'):
+        self.name = name
+        self.fmt = fmt
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
+    def __str__(self):
+        fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'
+        return fmtstr.format(**self.__dict__)
+
+
+class ProgressMeter(object):
+    def __init__(self, num_batches, meters, prefix=""):
+        self.batch_fmtstr = self._get_batch_fmtstr(num_batches)
+        self.meters = meters
+        self.prefix = prefix
+
+    def display(self, batch):
+        entries = [self.prefix + self.batch_fmtstr.format(batch)]
+        entries += [str(meter) for meter in self.meters]
+        print('\t'.join(entries))
+
+    def _get_batch_fmtstr(self, num_batches):
+        num_digits = len(str(num_batches // 1))
+        fmt = '{:' + str(num_digits) + 'd}'
+        return '[' + fmt + '/' + fmt.format(num_batches) + ']'
+
+
+def adjust_learning_rate(optimizer, epoch, args):
+    """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
+    lr = args.lr * (0.1 ** (epoch // 30))
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
 
 
 def accuracy(output, target, topk=(1,)):
-    """Computes the accuracy@k for the specified values of k"""
-    corrrect_ks = correct(output, target, topk)
-    batch_size = target.size(0)
-    return [correct_k.float().mul_(100.0 / batch_size) for correct_k in corrrect_ks]
+    """Computes the accuracy over the k top predictions for the specified values of k"""
+    with torch.no_grad():
+        maxk = max(topk)
+        batch_size = target.size(0)
 
-def correct(output, target, topk=(1,)):
-    """Computes the accuracy@k for the specified values of k"""
-    maxk = max(topk)
-    _, pred = output.topk(maxk, 1, True, True)
-    pred = pred.t()
-    correct = pred.eq(target.view(1, -1).expand_as(pred))
-    res = []
-    for k in topk:
-        correct_k = correct[:k].view(-1).sum(0, keepdim=True)
-        res.append(correct_k)
-    return res
+        _, pred = output.topk(maxk, 1, True, True)
+        pred = pred.t()
+        correct = pred.eq(target.view(1, -1).expand_as(pred))
 
-def listify(p=None, q=None):
-    if p is None: p=[]
-    elif not isinstance(p, collections.Iterable): p=[p]
-    n = q if type(q)==int else 1 if q is None else len(q)
-    if len(p)==1: p = p * n
-    return p
+        res = []
+        for k in topk:
+            correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
+            res.append(correct_k.mul_(100.0 / batch_size))
+        return res
+
 
 if __name__ == '__main__':
-    try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=UserWarning)
-            main()
-        if not args.skip_auto_shutdown: os.system(f'sudo shutdown -h -P +{args.auto_shutdown_success_delay_mins}')
-    except Exception as e:
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        import traceback
-        traceback.print_tb(exc_traceback, file=sys.stdout)
-        log.event(e)
-        # in case of exception, wait 2 hours before shutting down
-        if not args.skip_auto_shutdown: os.system(f'sudo shutdown -h -P +{args.auto_shutdown_failure_delay_mins}')
-    tb.close()
+    main()

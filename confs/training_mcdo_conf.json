@@ -2,7 +2,7 @@
     "resnet18_mcdo": 
     {   
         "train_flag": "True",
-        "prefix": "mcdo_resnet18",
+        "prefix": "mcdo_resnet50",
         "ds": "places365",
         "print_freq": 50,
 

@@ -21,7 +21,7 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 
 from pbnn.datasets import get_datasets
-from pbnn.models.mcdo_resnet18 import resnet18_mcdo
+from pbnn.models.mcdo_resnets import mcdo_resnet18, mcdo_resnet152, mcdo_resnet50
 
 best_acc1 = True
 # Load config
@@ -59,7 +59,7 @@ world_size = 1
 mp_str = 'store_false'
 ### CONFIG ###
 
-data_path = f'/home/dgrinwald/datasets/{ds}/'
+data_path = f'/home/dgrinwald/datasets/dissect/places/'
 file_path = f'models/{ds}/{prefix}_bs_{bs}_lr_{lr}_dropout_{p}_wd_{weight_decay}_mo_{momentum}_dist_training/'
 
 if not os.path.exists(file_path):
@@ -181,6 +181,8 @@ def main_worker(gpu, ngpus_per_node, args):
     global best_acc1
     args.gpu = gpu
 
+    print(f'GPU: {args.gpu}')
+
     if args.gpu is not None:
         print("Use GPU: {} for training".format(args.gpu))
 
@@ -188,7 +190,9 @@ def main_worker(gpu, ngpus_per_node, args):
         if args.multiprocessing_distributed:
             setup(gpu, ngpus_per_node, args.dist_backend)
 
-    model = resnet18_mcdo(p=args.p, num_classes=args.num_classes)
+    #model = resnet18_mcdo(p=args.p, num_classes=args.num_classes)
+    #model = mcdo_resnet152(p=args.p, num_classes=args.num_classes)
+    model = mcdo_resnet50(p=args.p, num_classes=args.num_classes)
 
     if not torch.cuda.is_available():
         print('using CPU, this will be slow')
@@ -301,7 +305,9 @@ def main_worker(gpu, ngpus_per_node, args):
         best_acc1 = max(acc1, best_acc1)
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
-                and args.gpu % ngpus_per_node == 0):
+                and args.gpu == 0):
+            
+            print(f'GPU {args.gpu} saving model ... ')
             save_checkpoint({
                 'epoch': epoch + 1,
                 'state_dict': model.state_dict(),
