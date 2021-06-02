@@ -7,12 +7,13 @@
         "print_freq": 50,
 
         "epochs": 90,
-        "seed": 42,
+        "seed": "",
         "lr": 0.1,
         "bs": 256,
         "momentum": 0.9,
         "weight_decay": 1e-4,
         "p": 0.05,
-        "mp": "True"
+        "mp": "True",
+        "workers": 32
     }
 }   

@@ -46,11 +46,16 @@ else:
 print_freq = xp_conf["print_freq"]
 epochs = xp_conf["epochs"]
 seed = xp_conf["seed"]
+if seed is not "":
+    seed=seed
+else:
+    seed=None
 lr = xp_conf["lr"]
 bs = xp_conf["bs"]
 momentum = xp_conf["momentum"]
 weight_decay = xp_conf["weight_decay"]
 p = xp_conf["p"]
+workers = xp_conf["workers"]
 
 
 # Setup distributed training
@@ -70,7 +75,7 @@ parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('--data', default=data_path,
                     help='path to dataset')
 
-parser.add_argument('-j', '--workers', default=2, type=int, metavar='N',
+parser.add_argument('-j', '--workers', default=workers, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 
 parser.add_argument('--epochs', default=epochs, type=int, metavar='N',

@@ -22,7 +22,7 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 
 from pbnn.datasets import get_datasets
-from pbnn.models.mcdo_resnets import mcdo_resnet18
+from pbnn.models.mcdo_resnets import mcdo_resnet18, mcdo_resnet50
 
 def accuracy(output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for the specified values of k"""

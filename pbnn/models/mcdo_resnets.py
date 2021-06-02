@@ -332,7 +332,11 @@ def resnet34(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> 
                    **kwargs)
 
 
-def mcdo_resnet50(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> ResNet:
+def mcdo_resnet50(
+    pretrained: bool = False, 
+    progress: bool = True, 
+    p: float = 0.5, 
+    **kwargs: Any) -> ResNet:
     r"""ResNet-50 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
 
@@ -340,8 +344,9 @@ def mcdo_resnet50(pretrained: bool = False, progress: bool = True, **kwargs: Any
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet50', Bottleneck, [3, 4, 6, 3], pretrained, progress,
-                   **kwargs)
+    
+    return _resnet('resnet50', Bottleneck, [3, 4, 6, 3], pretrained, progress, 
+                    p, **kwargs)
 
 
 def resnet101(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> ResNet:
