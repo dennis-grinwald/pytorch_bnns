@@ -25,19 +25,15 @@ def sample_proba(model, dataset, n_draws=1):
 
 def predict_proba(model, dataset, n_draws=1):
     proba = sample_proba(model, dataset, n_draws=n_draws)
-
     return proba.mean(dim=0)
 
 def predict_label(model, dataset, n_draws=1):
     proba = predict_proba(model, dataset, n_draws=n_draws)
-
     return proba.argmax(dim=-1)
 
 def evaluate(model, dataset, n_draws=1):
     assert isinstance(dataset, TensorDataset)
-
     predicted = predict_label(model, dataset, n_draws=n_draws)
-
     target = dataset.tensors[1].cpu().numpy()
     return confusion_matrix(target, predicted.cpu().numpy())
 
@@ -96,8 +92,7 @@ class DropoutLinear(Linear, FreezableWeight):
 
     def freeze(self, seed):
         # let's draw the new weight by using seeds
-        np.random.seed(seed[0])
-        torch.manual_seed(seed[1])
+        torch.manual_seed(seed)
 
         with torch.no_grad():
 
@@ -134,8 +129,7 @@ class DropoutConv2d(Conv2d, FreezableWeight):
         """Sample the weight from the parameter distribution and freeze it."""
 
         # let's draw the new weight by using seeds
-        np.random.seed(seed[0])
-        torch.manual_seed(seed[1])
+        torch.manual_seed(seed)
 
         prob = torch.full_like(self.weight[:1, :, :1, :1], 1 - self.p)
         feature_mask = torch.bernoulli(prob) / prob
