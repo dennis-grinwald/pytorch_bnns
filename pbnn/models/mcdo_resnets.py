@@ -222,7 +222,7 @@ class ResNet(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
         # ADD ONE LINEAR LAYER ?
-        self.fc = nn.DroputLinear(512 * block.expansion, num_classes, p = p)
+        self.fc = DropoutLinear(512 * block.expansion, num_classes, p = p)
         # self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
