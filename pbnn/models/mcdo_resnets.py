@@ -296,7 +296,7 @@ class SpectralResNet(nn.Module):
         block: Type[Union[BasicBlock, Bottleneck]],
         layers: List[int],
         p: float = 0.5,
-        input_channels = 11,
+        input_channels: int = 11,
         num_classes: int = 1000,
         zero_init_residual: bool = False,
         groups: int = 1,
@@ -426,6 +426,24 @@ def _resnet(
     #    model.load_state_dict(state_dict)
     return model
 
+def _spectral_resnet(
+    arch: str,
+    block: Type[Union[BasicBlock, Bottleneck]],
+    layers: List[int],
+    input_channels: int,
+    pretrained: bool,
+    progress: bool,
+    p: float = 0.5,
+    **kwargs: Any
+) -> SpectralResNet:
+
+    model = ResNet(block, layers, p, input_channels, **kwargs)
+    #if pretrained:
+    #    state_dict = load_state_dict_from_url(model_urls[arch],
+    #                                          progress=progress)
+    #    model.load_state_dict(state_dict)
+    return model
+
 
 def mcdo_resnet18(
             pretrained: bool = False,
@@ -448,7 +466,7 @@ def spectral_mcdo_resnet18(
             pretrained: bool = False,
             progress: bool = True,
             p: float = 0.5,
-            input_channels: float = 11,
+            input_channels: int = 11,
             **kwargs: Any
             ) -> SpectralResNet:
 
@@ -459,7 +477,7 @@ def spectral_mcdo_resnet18(
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet18', BasicBlock, [2, 2, 2, 2], pretrained, progress,
+    return _spectral_resnet('resnet18', BasicBlock, [2, 2, 2, 2], input_channels, pretrained, progress,
                    p, **kwargs)
 
 
