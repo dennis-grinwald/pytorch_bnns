@@ -437,7 +437,7 @@ def _spectral_resnet(
     **kwargs: Any
 ) -> SpectralResNet:
 
-    model = ResNet(block, layers, p, input_channels, **kwargs)
+    model = SpectralResNet(block, layers, p, input_channels, **kwargs)
     #if pretrained:
     #    state_dict = load_state_dict_from_url(model_urls[arch],
     #                                          progress=progress)
