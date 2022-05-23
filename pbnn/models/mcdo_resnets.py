@@ -1,4 +1,4 @@
-from .mcd_utils import DropoutLinear, DropoutConv2d
+from .mcdo_utils import DropoutLinear, DropoutConv2d
 import torch
 from torch import Tensor
 import torch.nn as nn
@@ -30,15 +30,17 @@ def conv3x3(
     layer: str = "None") -> DropoutConv2d:
     """3x3 convolution with padding"""
 
-    if not layer == "last":
-        print(f'Conv3x3 method: {p}')
-        return DropoutConv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                         padding=dilation, groups=groups, bias=False,
-                         dilation=dilation, p=p)
-    else:
-        print("Last block so not using Dropout")
-        return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                         padding=dilation, groups=groups, bias=False, dilation=dilation)
+    print(f'Conv3x3 method, p = {p}')
+    return DropoutConv2d(
+        in_planes, 
+        out_planes, 
+        kernel_size=3, 
+        stride=stride,
+        padding=dilation, 
+        groups=groups, 
+        bias=False,
+        dilation=dilation, 
+        p=p)
 
 
 def conv1x1(in_planes: int,
@@ -46,12 +48,16 @@ def conv1x1(in_planes: int,
     stride: int = 1,
     p: float = 0.5) -> DropoutConv2d:
     """1x1 convolution"""
+    print(f'Conv1x1 method, p = {p}')
 
-    return DropoutConv2d(in_planes, out_planes, kernel_size=1, stride=stride,
-                    bias=False,
-                    p=p)
-
-    # return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
+    return DropoutConv2d(
+        in_planes, 
+        out_planes, 
+        kernel_size=1, 
+        stride=stride,
+        bias=False,
+        p=p
+        )
 
 class BasicBlock(nn.Module):
     expansion: int = 1
@@ -81,7 +87,7 @@ class BasicBlock(nn.Module):
         self.conv1 = conv3x3(inplanes, planes, stride, p = p)
         self.bn1 = norm_layer(planes)
         self.relu = nn.ReLU(inplace=True)
-        self.conv2 = conv3x3(planes, planes, p=p, layer=layer)
+        self.conv2 = conv3x3(planes, planes, p=p)
         self.bn2 = norm_layer(planes)
         self.downsample = downsample
         self.stride = stride
@@ -135,7 +141,7 @@ class Bottleneck(nn.Module):
         # Both self.conv2 and self.downsample layers downsample the input when stride != 1
         self.conv1 = conv1x1(inplanes, width, p = p)
         self.bn1 = norm_layer(width)
-        self.conv2 = conv3x3(width, width, stride, groups, dilation, p = p, layer = layer)
+        self.conv2 = conv3x3(width, width, stride, groups, dilation, p = p)
         self.bn2 = norm_layer(width)
         self.conv3 = conv1x1(width, planes * self.expansion, p = p)
         self.bn3 = norm_layer(planes * self.expansion)
@@ -216,7 +222,7 @@ class ResNet(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
         # ADD ONE LINEAR LAYER ?
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.fc = nn.DroputLinear(512 * block.expansion, num_classes, p = p)
         # self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
